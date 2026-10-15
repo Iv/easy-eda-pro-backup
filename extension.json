@@ -1,0 +1,92 @@
+{
+	"name": "project-backup",
+	"uuid": "7b1c4e2a9d3f4a6b8c0e1f2a3b4c5d6e",
+	"displayName": "Project Backup",
+	"description": "Daily backup of all online EasyEDA Pro projects (personal and all teams) to local .epro files. Manual \"Backup now\" from the top menu.",
+	"version": "1.1.0",
+	"publisher": "iv",
+	"engines": {
+		"eda": "^3.2.0"
+	},
+	"license": "Apache-2.0",
+	"categories": "Other",
+	"keywords": [
+		"Backup"
+	],
+	"activationEvents": {
+		"onLogged": true
+	},
+	"entry": "./dist/index",
+	"dependentExtensions": {},
+	"headerMenus": {
+		"home": [
+			{
+				"id": "projectBackupMenu",
+				"title": "Backup",
+				"menuItems": [
+					{
+						"id": "backupNow",
+						"title": "Backup all projects now",
+						"registerFn": "backupNow"
+					},
+					{
+						"id": "backupStatus",
+						"title": "Last backup status",
+						"registerFn": "backupStatus"
+					},
+					{
+						"id": "setBackupFolder",
+						"title": "Set backup folder…",
+						"registerFn": "setBackupFolder"
+					}
+				]
+			}
+		],
+		"sch": [
+			{
+				"id": "projectBackupMenuSch",
+				"title": "Backup",
+				"menuItems": [
+					{
+						"id": "backupNow",
+						"title": "Backup all projects now",
+						"registerFn": "backupNow"
+					},
+					{
+						"id": "backupStatus",
+						"title": "Last backup status",
+						"registerFn": "backupStatus"
+					},
+					{
+						"id": "setBackupFolder",
+						"title": "Set backup folder…",
+						"registerFn": "setBackupFolder"
+					}
+				]
+			}
+		],
+		"pcb": [
+			{
+				"id": "projectBackupMenuPcb",
+				"title": "Backup",
+				"menuItems": [
+					{
+						"id": "backupNow",
+						"title": "Backup all projects now",
+						"registerFn": "backupNow"
+					},
+					{
+						"id": "backupStatus",
+						"title": "Last backup status",
+						"registerFn": "backupStatus"
+					},
+					{
+						"id": "setBackupFolder",
+						"title": "Set backup folder…",
+						"registerFn": "setBackupFolder"
+					}
+				]
+			}
+		]
+	}
+}
