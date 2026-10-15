@@ -110,3 +110,7 @@ The extension needs no build step. The package is a zip archive of `extension.js
 **Требования.** Десктопный клиент EasyEDA Pro 3.2 или новее, вход в аккаунт, режим Online. В каждой команде нужно право **«Скачивание проекта»**. Проекты из команд, где его нет, попадут в лог как ошибки.
 
 **Если клиент после перезапуска всегда в Full Offline (Linux).** Не проходит сетевая проверка при старте клиента. Запускайте его с переменной `NODE_OPTIONS=--network-family-autoselection-attempt-timeout=3000`.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
