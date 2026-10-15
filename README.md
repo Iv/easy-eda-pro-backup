@@ -21,7 +21,7 @@ One archive per day: the extension API can write files but cannot create folders
 
 ## Install
 
-1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.5.0.eext`.
+1. Download `project-backup_v<version>.eext` from the [latest release](https://github.com/Iv/easy-eda-pro-backup/releases/latest). In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick that file.
 2. In the extension's card, turn on **"Allow external interaction"**. Without it the extension cannot write files.
 3. Restart EasyEDA Pro.
 4. Optional: open **Backup → Set backup folder…** and enter the path of an **existing** folder. The default is `<Documents>/EasyEDA-Pro-backups`; if that folder doesn't exist, archives go to `<Documents>` itself. A folder synced to Yandex.Disk, Dropbox or Google Drive gives you an off-site copy for free.
