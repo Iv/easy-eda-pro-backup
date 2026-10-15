@@ -63,6 +63,22 @@ var edaEsbuildExportName = (() => {
 		return String(name || 'unnamed').replace(/[\/\\:*?"<>|\x00-\x1f]/g, '_').trim() || 'unnamed';
 	}
 
+	// Progress bar is shown only for manual runs, so the daily automatic backup
+	// does not pop up over the user's work
+	function progress(show, pct, title) {
+		if (!show) return;
+		try {
+			eda.sys_LoadingAndProgressBar.showProgressBar(Math.max(0, Math.min(99, Math.round(pct))), title);
+		} catch (e) {}
+	}
+
+	function hideProgress(show) {
+		if (!show) return;
+		try {
+			eda.sys_LoadingAndProgressBar.destroyProgressBar();
+		} catch (e) {}
+	}
+
 	function toast(msg, type) {
 		try {
 			eda.sys_Message.showToastMessage(msg, type);
@@ -161,16 +177,20 @@ var edaEsbuildExportName = (() => {
 				return;
 			}
 			toast('Project backup started…');
+			progress(manual, 0, 'Backup: listing projects…');
 			const projects = await collectProjects(log);
 			log.push(`Projects found: ${projects.size}`, '');
 
 			const usedPaths = new Set();
+			let index = 0;
 			for (const [uuid, meta] of projects) {
+				index++;
 				let name = uuid;
 				try {
 					const info = await eda.dmt_Project.getProjectInfo(uuid);
 					if (info && info.friendlyName) name = info.friendlyName;
 				} catch (e) {}
+				progress(manual, ((index - 1) / projects.size) * 100, `Backup ${index}/${projects.size}: ${name}`);
 				const label = `${meta.team}/${meta.folderPath ? meta.folderPath + '/' : ''}${name}`;
 				try {
 					const file = await eda.sys_FileManager.getProjectFileByProjectUuid(uuid, safe(name), undefined, 'epro');
@@ -196,6 +216,7 @@ var edaEsbuildExportName = (() => {
 		} finally {
 			try {
 				if (summary) {
+					progress(manual, 99, 'Backup: writing archive…');
 					zip.add('backup-log.txt', new TextEncoder().encode(log.join('\n') + '\n'));
 					const where = await writeArchive(zip.toBlob(), zipName);
 					summary += `\nArchive: ${where}`;
@@ -209,6 +230,7 @@ var edaEsbuildExportName = (() => {
 				summary += `\nCould not write ${zipName}: ${e && e.message}`;
 				toast('Backup failed: ' + (e && e.message), 'error');
 			}
+			hideProgress(manual);
 			if (summary) await eda.sys_Storage.setExtensionUserConfig('lastBackupSummary', summary);
 			running = false;
 		}

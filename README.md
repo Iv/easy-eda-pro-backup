@@ -19,7 +19,7 @@ One archive per day: the extension API can write files but cannot create folders
 
 ## Install
 
-1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.2.0.eext`.
+1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.3.0.eext`.
 2. In the extension's card, turn on **"Allow external interaction"**. Without it the extension cannot write files.
 3. Restart EasyEDA Pro.
 4. Optional: open **Backup → Set backup folder…** and enter the path of an **existing** folder. The default is `<Documents>/EasyEDA-Pro-backups`; if that folder doesn't exist, archives go to `<Documents>` itself. A folder synced to Yandex.Disk, Dropbox or Google Drive gives you an off-site copy for free.
@@ -29,7 +29,7 @@ One archive per day: the extension API can write files but cannot create folders
 
 - It uses only the official EasyEDA Pro extension API (`eda.dmt_Team`, `eda.dmt_Folder`, `eda.dmt_Project`, `eda.sys_FileManager.getProjectFileByProjectUuid`, `eda.sys_FileSystem`). There is no reverse engineering and it never asks for credentials.
 - **Automatic run.** About 2 minutes after you log in, and then every hour, the extension checks whether today's backup exists. If it doesn't, the backup runs. So you get at most one automatic backup per day, and only while the EasyEDA Pro desktop client is open in **Online** mode.
-- **Manual run.** Top menu **Backup → Backup all projects now**.
+- **Manual run.** Menu **Backup → Backup all projects now**. A progress bar shows `Backup 7/31: <project>`. Automatic runs don't show it, so they don't interrupt your work; you only get a toast at the start and at the end.
 - **Status.** **Backup → Last backup status** shows the time of the last run, the ok/failed counts, the first error (if any) and where the archive was written.
 - **Deleting old backups.** The extension never deletes anything. Use `easyeda-backup-prune.sh` (below) or your own cleanup job.
 
@@ -97,7 +97,7 @@ The extension needs no build step. The package is a zip archive of `extension.js
 
 **Установка**
 
-1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.2.0.eext`.
+1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.3.0.eext`.
 2. В карточке расширения включите **«Allow external interaction»**. Без этого расширение не сможет записывать файлы. Меню расширения по умолчанию находится в **Advanced → Backup**.
 3. Перезапустите EasyEDA Pro.
 4. При желании выберите папку для бэкапов: **Backup → Set backup folder…**. Папка должна уже существовать: расширение не умеет создавать папки. По умолчанию это `<Documents>/EasyEDA-Pro-backups`, а если её нет, архивы пишутся прямо в `<Documents>`. Если выбрать папку, которая синхронизируется с Яндекс.Диском или Dropbox, копия будет храниться ещё и в облаке.
@@ -106,7 +106,7 @@ The extension needs no build step. The package is a zip archive of `extension.js
 **Как работает**
 
 - **Автоматически.** Примерно через 2 минуты после входа в аккаунт, а затем каждый час расширение проверяет, есть ли бэкап за сегодня. Если нет — запускает его. Получается не больше одного автоматического бэкапа в день, и только пока EasyEDA Pro открыт в режиме Online.
-- **Вручную.** Меню **Backup → Backup all projects now**.
+- **Вручную.** Меню **Backup → Backup all projects now**. Во время работы виден прогресс-бар `Backup 7/31: <проект>`. Автоматический запуск прогресс-бар не показывает, чтобы не мешать работе: только уведомления в начале и в конце.
 - **Статус.** **Backup → Last backup status** показывает время последнего запуска, число успешных и неудачных проектов и папку с бэкапами.
 - **Старые копии.** Расширение ничего не удаляет. Для очистки есть скрипт `easyeda-backup-prune.sh`: он хранит все бэкапы за 30 дней, а из более старых — самый ранний бэкап каждого месяца. Как включить его через systemd-таймер, описано выше.
 
