@@ -81,7 +81,7 @@ Settings (environment variables): `EASYEDA_BACKUP_ROOT` (default `~/Yandex.Disk/
 ## Troubleshooting
 
 - **No "Backup" menu, or nothing happens.** Make sure the extension is enabled and "Allow external interaction" is on, then restart EasyEDA Pro.
-- **"Backup skipped: EasyEDA is not in online mode".** Switch the client to Online mode. On Linux, if the client keeps falling back to Full Offline after a restart, its startup network check is timing out. Start it with `NODE_OPTIONS=--network-family-autoselection-attempt-timeout=3000`.
+- **"Backup skipped: EasyEDA is not in online mode".** Switch the client to Online mode.
 - **"cannot write … — does the folder exist?" in Last backup status.** The backup folder must already exist (the extension cannot create folders). Create it, or pick another one with **Set backup folder…**.
 - **Where is the menu?** By default EasyEDA puts extension menus under **Advanced → Backup**. To get a separate top-level **Backup** menu, enable "show in header menu" in the extension's card in Extension Manager.
 
@@ -120,7 +120,6 @@ The extension needs no build step. The package is a zip archive of `extension.js
 
 **Требования.** Десктопный клиент EasyEDA Pro 3.2 или новее, вход в аккаунт, режим Online. В каждой команде нужно право **«Скачивание проекта»**. Проекты из команд, где его нет, попадут в лог как ошибки.
 
-**Если клиент после перезапуска всегда в Full Offline (Linux).** Не проходит сетевая проверка при старте клиента. Запускайте его с переменной `NODE_OPTIONS=--network-family-autoselection-attempt-timeout=3000`.
 
 ## License
 
