@@ -23,7 +23,7 @@ One archive per day: the extension API can write files but cannot create folders
 
 ## Install
 
-1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.4.0.eext`.
+1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.5.0.eext`.
 2. In the extension's card, turn on **"Allow external interaction"**. Without it the extension cannot write files.
 3. Restart EasyEDA Pro.
 4. Optional: open **Backup → Set backup folder…** and enter the path of an **existing** folder. The default is `<Documents>/EasyEDA-Pro-backups`; if that folder doesn't exist, archives go to `<Documents>` itself. A folder synced to Yandex.Disk, Dropbox or Google Drive gives you an off-site copy for free.
@@ -87,7 +87,7 @@ Settings (environment variables): `EASYEDA_BACKUP_ROOT` (default `~/Yandex.Disk/
 
 ## Build
 
-The extension needs no build step. The package is a zip archive of `extension.json` and `dist/index.js`:
+The extension needs no build step. The package is a zip archive of `extension.json`, `dist/index.js`, `README.md` (taken from `docs/EXTENSION_README.md` and shown on the extension's details page in Extension Manager), `CHANGELOG.md` and `LICENSE`:
 
 ```bash
 ./build.sh   # → project-backup_v<version>.eext
@@ -101,7 +101,7 @@ The extension needs no build step. The package is a zip archive of `extension.js
 
 **Установка**
 
-1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.4.0.eext`.
+1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.5.0.eext`.
 2. В карточке расширения включите **«Allow external interaction»**. Без этого расширение не сможет записывать файлы. Меню расширения по умолчанию находится в **Advanced → Backup**.
 3. Перезапустите EasyEDA Pro.
 4. При желании выберите папку для бэкапов: **Backup → Set backup folder…**. Папка должна уже существовать: расширение не умеет создавать папки. По умолчанию это `<Documents>/EasyEDA-Pro-backups`, а если её нет, архивы пишутся прямо в `<Documents>`. Если выбрать папку, которая синхронизируется с Яндекс.Диском или Dropbox, копия будет храниться ещё и в облаке.
