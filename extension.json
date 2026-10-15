@@ -2,8 +2,8 @@
 	"name": "project-backup",
 	"uuid": "7b1c4e2a9d3f4a6b8c0e1f2a3b4c5d6e",
 	"displayName": "Project Backup",
-	"description": "Daily backup of all online EasyEDA Pro projects (personal and all teams) into one .zip of .epro files. Manual \"Backup now\" from the menu.",
-	"version": "1.3.0",
+	"description": "Daily backup of all online EasyEDA Pro projects (personal and all teams) into one .zip of .epro2 files. Manual \"Backup now\" from the menu.",
+	"version": "1.4.0",
 	"publisher": "Ivan Kravchenko",
 	"engines": {
 		"eda": "^3.2.0"

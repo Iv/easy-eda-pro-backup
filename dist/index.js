@@ -2,11 +2,11 @@
  * Project Backup — EasyEDA Pro extension
  *
  * Backs up ALL online projects you have access to (personal space and every team,
- * including projects inside folders) as .epro files on the local disk.
+ * including projects inside folders) as .epro2 files on the local disk.
  *
  * Output: one archive per day
  *   <backup folder>/EasyEDA-backup_<YYYY-MM-DD>.zip
- *     <team>/<folder>/<project>.epro
+ *     <team>/<folder>/<project>.epro2
  *     backup-log.txt   — what was saved / what failed and why
  * (A single archive is used because the extension API can write files but cannot create folders.)
  *
@@ -56,7 +56,9 @@ var edaEsbuildExportName = (() => {
 	}
 
 	function now() {
-		return new Date().toISOString().replace('T', ' ').slice(0, 19);
+		const d = new Date();
+		const p = (n) => String(n).padStart(2, '0');
+		return `${today()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
 	}
 
 	function safe(name) {
@@ -193,12 +195,16 @@ var edaEsbuildExportName = (() => {
 				progress(manual, ((index - 1) / projects.size) * 100, `Backup ${index}/${projects.size}: ${name}`);
 				const label = `${meta.team}/${meta.folderPath ? meta.folderPath + '/' : ''}${name}`;
 				try {
-					const file = await eda.sys_FileManager.getProjectFileByProjectUuid(uuid, safe(name), undefined, 'epro');
+					// .epro2, not .epro: for projects stored in the older format the .epro export
+					// contains only project.json without any schematic/PCB data
+					const file = await eda.sys_FileManager.getProjectFileByProjectUuid(uuid, safe(name), undefined, 'epro2');
 					if (!file) throw new Error('empty file returned');
+					const data = new Uint8Array(await file.arrayBuffer());
+					if (!hasProjectData(data)) throw new Error('export contains no project data (only project2.json)');
 					let path = [safe(meta.team), meta.folderPath, safe(name)].filter(Boolean).join('/');
 					if (usedPaths.has(path)) path += '_' + uuid.slice(0, 8);
 					usedPaths.add(path);
-					zip.add(path + '.epro', new Uint8Array(await file.arrayBuffer()));
+					zip.add(path + '.epro2', data);
 					ok++;
 					log.push(`OK   ${label}  (${file.size} bytes)`);
 				} catch (e) {
@@ -248,7 +254,27 @@ var edaEsbuildExportName = (() => {
 		throw new Error(`cannot write ${root}/${fileName} — does the folder exist?`);
 	}
 
-	// Minimal ZIP writer (STORE, no compression: .epro files are already compressed)
+	// An .epro2 file is a zip archive; a real export has project2.json plus at least one
+	// data file (*.epru etc.). Reads the central directory to list the entries.
+	function hasProjectData(bytes) {
+		try {
+			const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+			let end = bytes.length - 22;
+			while (end >= 0 && v.getUint32(end, true) !== 0x06054b50) end--;
+			if (end < 0) return false;
+			const count = v.getUint16(end + 10, true);
+			let p = v.getUint32(end + 16, true);
+			for (let i = 0; i < count; i++) {
+				const nameLen = v.getUint16(p + 28, true);
+				const name = new TextDecoder().decode(bytes.subarray(p + 46, p + 46 + nameLen));
+				if (!name.endsWith('/') && !/^project2?\.json$/.test(name)) return true;
+				p += 46 + nameLen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+			}
+		} catch (e) {}
+		return false;
+	}
+
+	// Minimal ZIP writer (STORE, no compression: .epro2 files are already compressed)
 	const CRC_TABLE = (() => {
 		const t = new Uint32Array(256);
 		for (let n = 0; n < 256; n++) {

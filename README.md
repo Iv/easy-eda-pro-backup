@@ -2,24 +2,28 @@
 
 *[Русская версия ниже](#русский)*
 
-An EasyEDA Pro extension that backs up **all your online projects**: your personal space, every team you belong to, and the projects inside team folders. Each project is saved as an `.epro` file, and once a day (or whenever you start a backup from the menu) they are all packed into one zip archive on your local disk.
+An EasyEDA Pro extension that backs up **all your online projects**: your personal space, every team you belong to, and the projects inside team folders. Each project is saved as an `.epro2` file, and once a day (or whenever you start a backup from the menu) they are all packed into one zip archive on your local disk.
 
 ```
 <backup folder>/
   EasyEDA-backup_2026-10-15.zip
     backup-log.txt              ← what was saved, what failed and why
-    My Name/my-board.epro
-    my-team/motor-driver.epro
-    other-team/some-folder/sensor-board.epro
+    My Name/my-board.epro2
+    my-team/motor-driver.epro2
+    other-team/some-folder/sensor-board.epro2
   EasyEDA-backup_2026-10-16.zip
   ...
 ```
 
 One archive per day: the extension API can write files but cannot create folders.
 
+**Why `.epro2`.** For projects still stored on the server in the older format, the `.epro` export contains only `project.json`, with no schematics or PCBs. In testing this hit 18 of 31 projects. The `.epro2` export is complete for all of them. Each export is checked, and an export without any project data is reported as **FAIL**, never as OK.
+
+**Restoring.** Unzip the archive and open or import the `.epro2` file in EasyEDA Pro (**File → Open** / **Import**).
+
 ## Install
 
-1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.3.0.eext`.
+1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.4.0.eext`.
 2. In the extension's card, turn on **"Allow external interaction"**. Without it the extension cannot write files.
 3. Restart EasyEDA Pro.
 4. Optional: open **Backup → Set backup folder…** and enter the path of an **existing** folder. The default is `<Documents>/EasyEDA-Pro-backups`; if that folder doesn't exist, archives go to `<Documents>` itself. A folder synced to Yandex.Disk, Dropbox or Google Drive gives you an off-site copy for free.
@@ -93,11 +97,11 @@ The extension needs no build step. The package is a zip archive of `extension.js
 
 ## Русский
 
-Расширение для EasyEDA Pro, которое делает резервные копии **всех онлайн-проектов**: из личного пространства, из всех ваших команд и из папок внутри команд. Раз в сутки или по команде из меню все проекты сохраняются в `.epro` и упаковываются в один архив `EasyEDA-backup_ГГГГ-ММ-ДД.zip` на локальном диске.
+Расширение для EasyEDA Pro, которое делает резервные копии **всех онлайн-проектов**: из личного пространства, из всех ваших команд и из папок внутри команд. Раз в сутки или по команде из меню все проекты сохраняются в `.epro2` и упаковываются в один архив `EasyEDA-backup_ГГГГ-ММ-ДД.zip` на локальном диске.
 
 **Установка**
 
-1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.3.0.eext`.
+1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.4.0.eext`.
 2. В карточке расширения включите **«Allow external interaction»**. Без этого расширение не сможет записывать файлы. Меню расширения по умолчанию находится в **Advanced → Backup**.
 3. Перезапустите EasyEDA Pro.
 4. При желании выберите папку для бэкапов: **Backup → Set backup folder…**. Папка должна уже существовать: расширение не умеет создавать папки. По умолчанию это `<Documents>/EasyEDA-Pro-backups`, а если её нет, архивы пишутся прямо в `<Documents>`. Если выбрать папку, которая синхронизируется с Яндекс.Диском или Dropbox, копия будет храниться ещё и в облаке.
@@ -109,6 +113,10 @@ The extension needs no build step. The package is a zip archive of `extension.js
 - **Вручную.** Меню **Backup → Backup all projects now**. Во время работы виден прогресс-бар `Backup 7/31: <проект>`. Автоматический запуск прогресс-бар не показывает, чтобы не мешать работе: только уведомления в начале и в конце.
 - **Статус.** **Backup → Last backup status** показывает время последнего запуска, число успешных и неудачных проектов и папку с бэкапами.
 - **Старые копии.** Расширение ничего не удаляет. Для очистки есть скрипт `easyeda-backup-prune.sh`: он хранит все бэкапы за 30 дней, а из более старых — самый ранний бэкап каждого месяца. Как включить его через systemd-таймер, описано выше.
+
+**Почему `.epro2`.** У проектов, которые на сервере хранятся в старом формате, выгрузка в `.epro` содержит только `project.json`, без схем и плат: при проверке так было у 18 из 31 проекта. В `.epro2` все проекты выгружаются полностью. Каждая выгрузка проверяется, и пустая попадает в лог как **FAIL**.
+
+**Восстановление.** Распакуйте архив и откройте или импортируйте нужный `.epro2` в EasyEDA Pro (**File → Open** / **Import**).
 
 **Требования.** Десктопный клиент EasyEDA Pro 3.2 или новее, вход в аккаунт, режим Online. В каждой команде нужно право **«Скачивание проекта»**. Проекты из команд, где его нет, попадут в лог как ошибки.
 
