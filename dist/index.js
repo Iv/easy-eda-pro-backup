@@ -4,9 +4,11 @@
  * Backs up ALL online projects you have access to (personal space and every team,
  * including projects inside folders) as .epro files on the local disk.
  *
- * Layout:
- *   <backup folder>/<YYYY-MM-DD>/<team>/<folder>/<project>.epro
- *   <backup folder>/<YYYY-MM-DD>/backup-log.txt   — what was saved / what failed and why
+ * Output: one archive per day
+ *   <backup folder>/EasyEDA-backup_<YYYY-MM-DD>.zip
+ *     <team>/<folder>/<project>.epro
+ *     backup-log.txt   — what was saved / what failed and why
+ * (A single archive is used because the extension API can write files but cannot create folders.)
  *
  * When it runs:
  *   - automatically once a day: ~2 min after you log in, then the extension checks
@@ -14,7 +16,8 @@
  *   - manually: top menu "Backup → Backup all projects now".
  *
  * Settings (top menu "Backup"):
- *   - "Set backup folder…" — default is <Documents>/EasyEDA-Pro-backups;
+ *   - "Set backup folder…" — must be an existing folder; default is <Documents>/EasyEDA-Pro-backups
+ *     (if that does not exist, archives go to <Documents> itself);
  *   - "Last backup status" — result of the last run.
  *
  * Requirements:
@@ -26,6 +29,8 @@
  *
  * The extension never deletes anything. To prune old backups use an external job,
  * e.g. the easyeda-backup-prune.sh script shipped alongside (keeps 30 days + one per month).
+ *
+ * MIT License, (c) 2026 Ivan Kravchenko
  */
 "use strict";
 var edaEsbuildExportName = (() => {
@@ -142,54 +147,157 @@ var edaEsbuildExportName = (() => {
 		}
 		running = true;
 		const date = today();
-		let dayDir = '';
+		const zipName = `EasyEDA-backup_${date}.zip`;
 		const log = [`EasyEDA project backup ${now()}`];
+		const zip = new ZipWriter();
 		let ok = 0;
 		const failed = [];
+		let firstError = '';
+		let summary = '';
 		try {
 			if (!eda.sys_Environment.isOnlineMode()) {
 				log.push('Client is not in online mode, skipped');
 				if (manual) toast('Backup skipped: EasyEDA is not in online mode', 'warn');
 				return;
 			}
-			dayDir = `${await getBackupRoot()}/${date}`;
-			log.push(`Target: ${dayDir}`);
 			toast('Project backup started…');
 			const projects = await collectProjects(log);
 			log.push(`Projects found: ${projects.size}`, '');
 
+			const usedPaths = new Set();
 			for (const [uuid, meta] of projects) {
 				let name = uuid;
 				try {
 					const info = await eda.dmt_Project.getProjectInfo(uuid);
 					if (info && info.friendlyName) name = info.friendlyName;
 				} catch (e) {}
-				const dir = [dayDir, safe(meta.team), meta.folderPath].filter(Boolean).join('/');
+				const label = `${meta.team}/${meta.folderPath ? meta.folderPath + '/' : ''}${name}`;
 				try {
 					const file = await eda.sys_FileManager.getProjectFileByProjectUuid(uuid, safe(name), undefined, 'epro');
 					if (!file) throw new Error('empty file returned');
-					const fileName = safe(name) + '.epro';
-					if (!(await save(dir, file, fileName))) throw new Error('cannot write ' + dir + '/' + fileName);
+					let path = [safe(meta.team), meta.folderPath, safe(name)].filter(Boolean).join('/');
+					if (usedPaths.has(path)) path += '_' + uuid.slice(0, 8);
+					usedPaths.add(path);
+					zip.add(path + '.epro', new Uint8Array(await file.arrayBuffer()));
 					ok++;
-					log.push(`OK   ${meta.team}/${meta.folderPath ? meta.folderPath + '/' : ''}${name}  (${file.size} bytes)`);
+					log.push(`OK   ${label}  (${file.size} bytes)`);
 				} catch (e) {
+					const msg = (e && e.message) || String(e);
+					if (!firstError) firstError = msg;
 					failed.push(name);
-					log.push(`FAIL ${meta.team}/${meta.folderPath ? meta.folderPath + '/' : ''}${name}  [${uuid}]: ${e && e.message}`);
+					log.push(`FAIL ${label}  [${uuid}]: ${msg}`);
 				}
 			}
 			log.push('', `Done ${now()}: ${ok} ok, ${failed.length} failed`);
-			if (ok > 0) await eda.sys_Storage.setExtensionUserConfig('lastBackupDate', date);
-			await eda.sys_Storage.setExtensionUserConfig('lastBackupSummary', `${now()}: ${ok} ok, ${failed.length} failed${failed.length ? ' (' + failed.join(', ') + ')' : ''}`);
-			toast(
-				`Backup finished: ${ok} projects saved` + (failed.length ? `, ${failed.length} failed` : ''),
-				failed.length ? 'warn' : 'success',
-			);
+			summary = `${now()}: ${ok} ok, ${failed.length} failed` + (firstError ? `\nFirst error: ${firstError}` : '');
 		} catch (e) {
 			log.push(`Backup crashed: ${e && e.stack ? e.stack : e}`);
-			toast('Backup failed: ' + (e && e.message), 'error');
+			summary = `${now()}: crashed: ${e && e.message}`;
 		} finally {
-			if (dayDir) await save(dayDir, new Blob([log.join('\n') + '\n'], { type: 'text/plain' }), 'backup-log.txt');
+			try {
+				if (summary) {
+					zip.add('backup-log.txt', new TextEncoder().encode(log.join('\n') + '\n'));
+					const where = await writeArchive(zip.toBlob(), zipName);
+					summary += `\nArchive: ${where}`;
+					if (ok > 0) await eda.sys_Storage.setExtensionUserConfig('lastBackupDate', date);
+					toast(
+						`Backup finished: ${ok} projects saved` + (failed.length ? `, ${failed.length} failed` : ''),
+						failed.length ? 'warn' : 'success',
+					);
+				}
+			} catch (e) {
+				summary += `\nCould not write ${zipName}: ${e && e.message}`;
+				toast('Backup failed: ' + (e && e.message), 'error');
+			}
+			if (summary) await eda.sys_Storage.setExtensionUserConfig('lastBackupSummary', summary);
 			running = false;
+		}
+	}
+
+	// Writes the archive into the backup folder. Extensions cannot create folders,
+	// so if the default folder does not exist yet, fall back to Documents itself.
+	async function writeArchive(blob, fileName) {
+		const root = await getBackupRoot();
+		if (await save(root, blob, fileName)) return `${root}/${fileName}`;
+		if (!eda.sys_Storage.getExtensionUserConfig('backupRoot')) {
+			const docs = await eda.sys_FileSystem.getDocumentsPath();
+			if (await save(docs, blob, fileName)) return `${docs}/${fileName} (create ${root} to use it)`;
+		}
+		throw new Error(`cannot write ${root}/${fileName} — does the folder exist?`);
+	}
+
+	// Minimal ZIP writer (STORE, no compression: .epro files are already compressed)
+	const CRC_TABLE = (() => {
+		const t = new Uint32Array(256);
+		for (let n = 0; n < 256; n++) {
+			let c = n;
+			for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+			t[n] = c >>> 0;
+		}
+		return t;
+	})();
+
+	function crc32(data) {
+		let c = 0xffffffff;
+		for (let i = 0; i < data.length; i++) c = CRC_TABLE[(c ^ data[i]) & 0xff] ^ (c >>> 8);
+		return (c ^ 0xffffffff) >>> 0;
+	}
+
+	class ZipWriter {
+		constructor() {
+			this.parts = [];
+			this.central = [];
+			this.offset = 0;
+			const d = new Date();
+			this.time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+			this.date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+		}
+
+		add(name, data) {
+			const nameBytes = new TextEncoder().encode(name);
+			const crc = crc32(data);
+			const local = new DataView(new ArrayBuffer(30));
+			local.setUint32(0, 0x04034b50, true);
+			local.setUint16(4, 20, true);
+			local.setUint16(6, 0x0800, true); // UTF-8 names
+			local.setUint16(8, 0, true); // STORE
+			local.setUint16(10, this.time, true);
+			local.setUint16(12, this.date, true);
+			local.setUint32(14, crc, true);
+			local.setUint32(18, data.length, true);
+			local.setUint32(22, data.length, true);
+			local.setUint16(26, nameBytes.length, true);
+			local.setUint16(28, 0, true);
+
+			const cen = new DataView(new ArrayBuffer(46));
+			cen.setUint32(0, 0x02014b50, true);
+			cen.setUint16(4, 20, true);
+			cen.setUint16(6, 20, true);
+			cen.setUint16(8, 0x0800, true);
+			cen.setUint16(10, 0, true);
+			cen.setUint16(12, this.time, true);
+			cen.setUint16(14, this.date, true);
+			cen.setUint32(16, crc, true);
+			cen.setUint32(20, data.length, true);
+			cen.setUint32(24, data.length, true);
+			cen.setUint16(28, nameBytes.length, true);
+			cen.setUint32(42, this.offset, true);
+
+			this.parts.push(local, nameBytes, data);
+			this.central.push(cen, nameBytes);
+			this.offset += 30 + nameBytes.length + data.length;
+		}
+
+		toBlob() {
+			const cenSize = this.central.reduce((s, p) => s + p.byteLength, 0);
+			const end = new DataView(new ArrayBuffer(22));
+			const count = this.central.length / 2;
+			end.setUint32(0, 0x06054b50, true);
+			end.setUint16(8, count, true);
+			end.setUint16(10, count, true);
+			end.setUint32(12, cenSize, true);
+			end.setUint32(16, this.offset, true);
+			return new Blob([...this.parts, ...this.central, end], { type: 'application/zip' });
 		}
 	}
 

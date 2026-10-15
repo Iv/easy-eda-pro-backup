@@ -2,33 +2,35 @@
 
 *[Русская версия ниже](#русский)*
 
-An EasyEDA Pro extension that backs up **all your online projects**: your personal space, every team you belong to, and the projects inside team folders. Each project is saved as an `.epro` file on your local disk once a day, or whenever you start a backup from the menu.
+An EasyEDA Pro extension that backs up **all your online projects**: your personal space, every team you belong to, and the projects inside team folders. Each project is saved as an `.epro` file, and once a day (or whenever you start a backup from the menu) they are all packed into one zip archive on your local disk.
 
 ```
 <backup folder>/
-  2026-10-15/
+  EasyEDA-backup_2026-10-15.zip
     backup-log.txt              ← what was saved, what failed and why
     My Name/my-board.epro
     my-team/motor-driver.epro
     other-team/some-folder/sensor-board.epro
-  2026-10-16/
-    ...
+  EasyEDA-backup_2026-10-16.zip
+  ...
 ```
+
+One archive per day: the extension API can write files but cannot create folders.
 
 ## Install
 
-1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.1.0.eext`.
+1. In EasyEDA Pro, go to **Settings → Extensions → Extension Manager → Import** and pick `project-backup_v1.2.0.eext`.
 2. In the extension's card, turn on **"Allow external interaction"**. Without it the extension cannot write files.
 3. Restart EasyEDA Pro.
-4. Optional: open **Backup → Set backup folder…** and choose a folder. The default is `<Documents>/EasyEDA-Pro-backups`. A folder synced to Yandex.Disk, Dropbox or Google Drive gives you an off-site copy for free.
-5. Run **Backup → Backup all projects now** once and check `backup-log.txt`.
+4. Optional: open **Backup → Set backup folder…** and enter the path of an **existing** folder. The default is `<Documents>/EasyEDA-Pro-backups`; if that folder doesn't exist, archives go to `<Documents>` itself. A folder synced to Yandex.Disk, Dropbox or Google Drive gives you an off-site copy for free.
+5. Run **Backup → Backup all projects now** once and check `backup-log.txt` inside the archive.
 
 ## How it works
 
 - It uses only the official EasyEDA Pro extension API (`eda.dmt_Team`, `eda.dmt_Folder`, `eda.dmt_Project`, `eda.sys_FileManager.getProjectFileByProjectUuid`, `eda.sys_FileSystem`). There is no reverse engineering and it never asks for credentials.
 - **Automatic run.** About 2 minutes after you log in, and then every hour, the extension checks whether today's backup exists. If it doesn't, the backup runs. So you get at most one automatic backup per day, and only while the EasyEDA Pro desktop client is open in **Online** mode.
 - **Manual run.** Top menu **Backup → Backup all projects now**.
-- **Status.** **Backup → Last backup status** shows the time of the last run, the ok/failed counts and the backup folder.
+- **Status.** **Backup → Last backup status** shows the time of the last run, the ok/failed counts, the first error (if any) and where the archive was written.
 - **Deleting old backups.** The extension never deletes anything. Use `easyeda-backup-prune.sh` (below) or your own cleanup job.
 
 ## Requirements
@@ -38,7 +40,7 @@ An EasyEDA Pro extension that backs up **all your online projects**: your person
 
 ## Pruning old backups (Linux, optional)
 
-`easyeda-backup-prune.sh` keeps every daily backup from the last 30 days, plus the earliest backup of each month forever. It only touches folders named `YYYY-MM-DD`.
+`easyeda-backup-prune.sh` keeps every daily backup from the last 30 days, plus the earliest backup of each month forever. It only touches files named `EasyEDA-backup_YYYY-MM-DD.zip` (and legacy `YYYY-MM-DD` folders).
 
 ```bash
 install -m755 easyeda-backup-prune.sh ~/.local/bin/
@@ -76,7 +78,8 @@ Settings (environment variables): `EASYEDA_BACKUP_ROOT` (default `~/Yandex.Disk/
 
 - **No "Backup" menu, or nothing happens.** Make sure the extension is enabled and "Allow external interaction" is on, then restart EasyEDA Pro.
 - **"Backup skipped: EasyEDA is not in online mode".** Switch the client to Online mode. On Linux, if the client keeps falling back to Full Offline after a restart, its startup network check is timing out. Start it with `NODE_OPTIONS=--network-family-autoselection-attempt-timeout=3000`.
-- **Errors like `cannot write ...` in the log.** Check that the backup folder exists and that you can write to it.
+- **"cannot write … — does the folder exist?" in Last backup status.** The backup folder must already exist (the extension cannot create folders). Create it, or pick another one with **Set backup folder…**.
+- **Where is the menu?** By default EasyEDA puts extension menus under **Advanced → Backup**. To get a separate top-level **Backup** menu, enable "show in header menu" in the extension's card in Extension Manager.
 
 ## Build
 
@@ -90,15 +93,15 @@ The extension needs no build step. The package is a zip archive of `extension.js
 
 ## Русский
 
-Расширение для EasyEDA Pro, которое делает резервные копии **всех онлайн-проектов**: из личного пространства, из всех ваших команд и из папок внутри команд. Каждый проект сохраняется на локальный диск в файл `.epro` раз в сутки или по команде из меню.
+Расширение для EasyEDA Pro, которое делает резервные копии **всех онлайн-проектов**: из личного пространства, из всех ваших команд и из папок внутри команд. Раз в сутки или по команде из меню все проекты сохраняются в `.epro` и упаковываются в один архив `EasyEDA-backup_ГГГГ-ММ-ДД.zip` на локальном диске.
 
 **Установка**
 
-1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.1.0.eext`.
-2. В карточке расширения включите **«Allow external interaction»**. Без этого расширение не сможет записывать файлы.
+1. В EasyEDA Pro откройте **Settings → Extensions → Extension Manager → Import** и выберите `project-backup_v1.2.0.eext`.
+2. В карточке расширения включите **«Allow external interaction»**. Без этого расширение не сможет записывать файлы. Меню расширения по умолчанию находится в **Advanced → Backup**.
 3. Перезапустите EasyEDA Pro.
-4. При желании выберите папку для бэкапов: **Backup → Set backup folder…**. По умолчанию это `<Documents>/EasyEDA-Pro-backups`. Если выбрать папку, которая синхронизируется с Яндекс.Диском или Dropbox, копия будет храниться ещё и в облаке.
-5. Один раз запустите **Backup → Backup all projects now** и проверьте `backup-log.txt`.
+4. При желании выберите папку для бэкапов: **Backup → Set backup folder…**. Папка должна уже существовать: расширение не умеет создавать папки. По умолчанию это `<Documents>/EasyEDA-Pro-backups`, а если её нет, архивы пишутся прямо в `<Documents>`. Если выбрать папку, которая синхронизируется с Яндекс.Диском или Dropbox, копия будет храниться ещё и в облаке.
+5. Один раз запустите **Backup → Backup all projects now** и проверьте `backup-log.txt` внутри архива.
 
 **Как работает**
 
