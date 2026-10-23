@@ -30,7 +30,8 @@ One archive per day: the extension API can write files but cannot create folders
 ## How it works
 
 - It uses only the official EasyEDA Pro extension API (`eda.dmt_Team`, `eda.dmt_Folder`, `eda.dmt_Project`, `eda.sys_FileManager.getProjectFileByProjectUuid`, `eda.sys_FileSystem`). There is no reverse engineering and it never asks for credentials.
-- **Automatic run.** About 2 minutes after you log in, and then every hour, the extension checks whether today's backup exists. If it doesn't, the backup runs. So you get at most one automatic backup per day, and only while the EasyEDA Pro desktop client is open in **Online** mode.
+- **Automatic run.** About 2 minutes after you log in, and then every hour, the extension checks whether today's backup is complete. If it isn't, the backup runs. If some projects failed, it tries again an hour later, up to 3 runs a day. It only runs while the EasyEDA Pro desktop client is open in **Online** mode.
+- **Resilience.** Each project download is retried up to 3 times. After 4 network errors in a row the run stops and retries an hour later. A run that saved nothing writes `EasyEDA-backup_<date>_FAILED.zip` (log only) instead of overwriting a good archive.
 - **Manual run.** Menu **Backup → Backup all projects now**. A progress bar shows `Backup 7/31: <project>`. Automatic runs don't show it, so they don't interrupt your work; you only get a toast at the start and at the end.
 - **Status.** **Backup → Last backup status** shows the time of the last run, the ok/failed counts, the first error (if any) and where the archive was written.
 - **Deleting old backups.** The extension never deletes anything. Use `easyeda-backup-prune.sh` (below) or your own cleanup job.
@@ -42,7 +43,7 @@ One archive per day: the extension API can write files but cannot create folders
 
 ## Pruning old backups (Linux, optional)
 
-`easyeda-backup-prune.sh` keeps every daily backup from the last 30 days, plus the earliest backup of each month forever. It only touches files named `EasyEDA-backup_YYYY-MM-DD.zip` (and legacy `YYYY-MM-DD` folders).
+`easyeda-backup-prune.sh` keeps every daily backup from the last 30 days, plus the earliest backup of each month forever. It only touches files named `EasyEDA-backup_YYYY-MM-DD.zip` (and legacy `YYYY-MM-DD` folders). Log-only `…_FAILED.zip` archives are never kept as monthly copies and are deleted after 30 days.
 
 ```bash
 install -m755 easyeda-backup-prune.sh ~/.local/bin/

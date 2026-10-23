@@ -8,11 +8,14 @@
  *   <backup folder>/EasyEDA-backup_<YYYY-MM-DD>.zip
  *     <team>/<folder>/<project>.epro2
  *     backup-log.txt   — what was saved / what failed and why
+ * A run that saved nothing writes EasyEDA-backup_<YYYY-MM-DD>_FAILED.zip (log only), so it
+ * never overwrites a good archive. Each project download is retried up to 3 times.
  * (A single archive is used because the extension API can write files but cannot create folders.)
  *
  * When it runs:
  *   - automatically once a day: ~2 min after you log in, then the extension checks
  *     hourly whether today's backup exists (only while EasyEDA Pro is open in Online mode);
+ *     if some projects failed, it tries again an hour later (up to 3 runs a day);
  *   - manually: top menu "Backup → Backup all projects now".
  *
  * Settings (top menu "Backup"):
@@ -41,7 +44,25 @@ var edaEsbuildExportName = (() => {
 	// Delay after login before the first check, so the editor finishes loading (ms)
 	const STARTUP_DELAY = 2 * 60 * 1000;
 
+	// Automatic runs per day before giving up on failed projects until tomorrow
+	const MAX_RUNS_PER_DAY = 3;
+	// Delays between attempts of one API call (ms); network errors are often transient
+	const RETRY_DELAYS = [2000, 5000];
+	// Stop the run after this many network errors in a row; the hourly check retries later
+	const MAX_NETWORK_ERRORS_IN_ROW = 4;
+
 	let running = false;
+
+	async function withRetry(fn) {
+		for (let attempt = 0; ; attempt++) {
+			try {
+				return await fn();
+			} catch (e) {
+				if (attempt >= RETRY_DELAYS.length) throw e;
+				await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+			}
+		}
+	}
 
 	async function getBackupRoot() {
 		const custom = eda.sys_Storage.getExtensionUserConfig('backupRoot');
@@ -185,11 +206,17 @@ var edaEsbuildExportName = (() => {
 
 			const usedPaths = new Set();
 			let index = 0;
+			let networkErrorsInRow = 0;
 			for (const [uuid, meta] of projects) {
 				index++;
+				if (networkErrorsInRow >= MAX_NETWORK_ERRORS_IN_ROW) {
+					failed.push(uuid);
+					log.push(`SKIP ${meta.team}/${meta.folderPath ? meta.folderPath + '/' : ''}${uuid}: network looks down, will retry later`);
+					continue;
+				}
 				let name = uuid;
 				try {
-					const info = await eda.dmt_Project.getProjectInfo(uuid);
+					const info = await withRetry(() => eda.dmt_Project.getProjectInfo(uuid));
 					if (info && info.friendlyName) name = info.friendlyName;
 				} catch (e) {}
 				progress(manual, ((index - 1) / projects.size) * 100, `Backup ${index}/${projects.size}: ${name}`);
@@ -197,7 +224,7 @@ var edaEsbuildExportName = (() => {
 				try {
 					// .epro2, not .epro: for projects stored in the older format the .epro export
 					// contains only project.json without any schematic/PCB data
-					const file = await eda.sys_FileManager.getProjectFileByProjectUuid(uuid, safe(name), undefined, 'epro2');
+					const file = await withRetry(() => eda.sys_FileManager.getProjectFileByProjectUuid(uuid, safe(name), undefined, 'epro2'));
 					if (!file) throw new Error('empty file returned');
 					const data = new Uint8Array(await file.arrayBuffer());
 					if (!hasProjectData(data)) throw new Error('export contains no project data (only project2.json)');
@@ -206,9 +233,11 @@ var edaEsbuildExportName = (() => {
 					usedPaths.add(path);
 					zip.add(path + '.epro2', data);
 					ok++;
+					networkErrorsInRow = 0;
 					log.push(`OK   ${label}  (${file.size} bytes)`);
 				} catch (e) {
 					const msg = (e && e.message) || String(e);
+					networkErrorsInRow = /network/i.test(msg) ? networkErrorsInRow + 1 : 0;
 					if (!firstError) firstError = msg;
 					failed.push(name);
 					log.push(`FAIL ${label}  [${uuid}]: ${msg}`);
@@ -224,9 +253,16 @@ var edaEsbuildExportName = (() => {
 				if (summary) {
 					progress(manual, 99, 'Backup: writing archive…');
 					zip.add('backup-log.txt', new TextEncoder().encode(log.join('\n') + '\n'));
-					const where = await writeArchive(zip.toBlob(), zipName);
+					// A run that saved nothing must not overwrite a good archive of the same day,
+					// and must not look like a backup to the prune script
+					const where = await writeArchive(zip.toBlob(), ok > 0 ? zipName : `EasyEDA-backup_${date}_FAILED.zip`);
 					summary += `\nArchive: ${where}`;
-					if (ok > 0) await eda.sys_Storage.setExtensionUserConfig('lastBackupDate', date);
+					// The day counts as done only when every project was saved, or after
+					// MAX_RUNS_PER_DAY attempts (so a permanent error does not rerun every hour)
+					const runs = eda.sys_Storage.getExtensionUserConfig('runsDate') === date ? (eda.sys_Storage.getExtensionUserConfig('runsCount') || 0) + 1 : 1;
+					await eda.sys_Storage.setExtensionUserConfig('runsDate', date);
+					await eda.sys_Storage.setExtensionUserConfig('runsCount', runs);
+					if ((ok > 0 && failed.length === 0) || runs >= MAX_RUNS_PER_DAY) await eda.sys_Storage.setExtensionUserConfig('lastBackupDate', date);
 					toast(
 						`Backup finished: ${ok} projects saved` + (failed.length ? `, ${failed.length} failed` : ''),
 						failed.length ? 'warn' : 'success',

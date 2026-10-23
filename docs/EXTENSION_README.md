@@ -17,6 +17,8 @@ EasyEDA-backup_2026-10-15.zip
 - Projects are exported in the **`.epro2`** format. For projects that the server still stores in the older format, an `.epro` export contains only `project.json`, with no schematics or PCBs. The `.epro2` export is complete.
 - Each export is **checked**. A file without any project data is reported as **FAIL**, never silently saved as OK.
 - If two projects have the same name in the same place, a short ID is added to the file name.
+- Each project download is **retried up to 3 times**, because network errors are often transient. After 4 network errors in a row the run stops early and retries an hour later.
+- A run that saved nothing writes `EasyEDA-backup_<date>_FAILED.zip`, which contains only the log. It never overwrites a good archive from the same day.
 
 ## First-time setup
 
@@ -31,7 +33,7 @@ EasyEDA-backup_2026-10-15.zip
 
 ## When it runs
 
-- **Automatically, once a day.** About 2 minutes after you log in, and then every hour, the extension checks whether today's backup exists. If it doesn't, the backup runs. No progress bar is shown, so it doesn't interrupt your work; you only get a notification at the start and at the end.
+- **Automatically, once a day.** About 2 minutes after you log in, and then every hour, the extension checks whether today's backup is complete. If it isn't, the backup runs. If some projects failed, it tries again an hour later, up to 3 runs a day. No progress bar is shown, so it doesn't interrupt your work; you only get a notification at the start and at the end.
 - **Manually** with **Backup all projects now**, as often as you like. A later run on the same day overwrites that day's archive.
 - **Only while the EasyEDA Pro desktop client is open, logged in, and in Online mode.** It does not run in the browser version or in Offline / Half-Offline mode.
 
@@ -67,6 +69,7 @@ The extension **never deletes anything**, so archives pile up (one per day). Cle
 | Every project FAILs, or "cannot write … does the folder exist?" | Enable "Allow external interaction" and make sure the backup folder exists |
 | "Backup skipped: EasyEDA is not in online mode" | Switch the client to Online mode and log in |
 | Some projects FAIL with a permission error | Ask the team owner for the "Download project" permission |
+| `…_FAILED.zip` / "Network Error!" for every project | The network was down or unstable during the run. The extension retries automatically an hour later |
 | No Backup menu | Look under **Advanced → Backup**, or restart EasyEDA after installing |
 
 ## Privacy

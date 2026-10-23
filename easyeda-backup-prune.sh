@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Prune EasyEDA project backups (EasyEDA-backup_YYYY-MM-DD.zip, or legacy YYYY-MM-DD folders):
 # keep every backup from the last KEEP_DAYS days, and the earliest backup of each month forever.
+# Log-only archives of failed runs (EasyEDA-backup_YYYY-MM-DD_FAILED.zip) are never kept as
+# monthly copies and are deleted after KEEP_DAYS days.
 set -euo pipefail
 ROOT="${EASYEDA_BACKUP_ROOT:-$HOME/Yandex.Disk/Backups/EasyEDA}"
 KEEP_DAYS="${KEEP_DAYS:-30}"
@@ -31,6 +33,20 @@ for e in "${entries[@]}"; do
         echo "would delete $ROOT/$name"
     else
         rm -rf -- "${ROOT:?}/$name"
+        echo "deleted $ROOT/$name"
+    fi
+done
+
+# Failed-run logs: just expire them
+find "$ROOT" -mindepth 1 -maxdepth 1 -type f -regextype posix-extended \
+    -regex '.*/EasyEDA-backup_[0-9]{4}-[0-9]{2}-[0-9]{2}_FAILED\.zip' -printf '%f\n' | sort |
+while read -r name; do
+    d=${name:15:10}
+    [[ "$d" < "$cutoff" ]] || continue
+    if [ "$DRY_RUN" = 1 ]; then
+        echo "would delete $ROOT/$name"
+    else
+        rm -f -- "${ROOT:?}/$name"
         echo "deleted $ROOT/$name"
     fi
 done

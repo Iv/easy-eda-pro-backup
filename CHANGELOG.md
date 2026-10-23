@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.0
+- Each project download is retried up to 3 times (after 2 s and 5 s).
+- After 4 network errors in a row the run stops early instead of failing every project slowly.
+- A run that saved nothing writes `EasyEDA-backup_<date>_FAILED.zip` (log only) and never overwrites a good archive from the same day.
+- If some projects failed, the automatic backup runs again an hour later, up to 3 runs a day.
+- Prune script: `…_FAILED.zip` files are never kept as monthly copies and expire after 30 days.
+
 ## 1.5.0
 - The extension details page in Extension Manager now shows a full description and this changelog.
 
